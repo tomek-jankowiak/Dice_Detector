@@ -2,7 +2,7 @@ from Picture import Picture
 
 
 def main():
-    easy_dices = ['./images/easy/dice1.png', './images/easy/dice2.jpg']
+    easy_dices = ['./images/easy/dice4.jpg', './images/easy/dice2.jpg']
     pictures = []
     for dice in easy_dices:
         pictures.append(Picture(dice))
