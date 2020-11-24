@@ -14,8 +14,13 @@ def distance(p1, p2):
 
 class Picture:
     def __init__(self, filename):
+        self.filename = filename
         self.img = cv.imread(filename)
         self.img_gray = cv.cvtColor(self.img, cv.COLOR_BGR2GRAY)
+
+        height, width, channels = self.img.shape
+        self.height = height
+        self.width = width
 
         self.kernel = np.ones((3, 3), np.uint8)
 
@@ -27,9 +32,9 @@ class Picture:
             crop_img = self.img_gray[min_y:max_y, min_x:max_x]
             pips = self.find_pips(crop_img)
             textcoord = (int((max_x+min_x)/2), int(min_y - 10))
-            cv.putText(self.img, str(len(pips)), textcoord, cv.FONT_HERSHEY_COMPLEX, 5, (0,0,255), 5)
+            cv.putText(self.img, str(len(pips)), textcoord, cv.FONT_HERSHEY_COMPLEX, 5, (255,0,0), 5)
 
-        cv.drawContours(self.img, faces, -1, (255, 0, 0), 5)
+        cv.drawContours(self.img, faces, -1, (0, 0, 255), 5)
         plt.figure(figsize=(6, 6))
         plt.imshow(self.img)
         plt.show()
@@ -38,17 +43,23 @@ class Picture:
         squares = []
         blur = cv.medianBlur(self.img_gray, 5)
 
-        for thresh in range(0, 255, 26):
+        for thresh in range(0, 256, 26):
             _retr, binary = cv.threshold(blur, thresh, 255, cv.THRESH_BINARY)
             contours, _hierarchy = cv.findContours(binary, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+            tmp = self.img.copy()
+
             for cnt in contours:
                 cnt_len = cv.arcLength(cnt, True)
                 cnt = cv.approxPolyDP(cnt, 0.02 * cnt_len, True)
-                if len(cnt) == 4 and cv.contourArea(cnt) > 1000 and cv.isContourConvex(cnt):
-                    cnt = cnt.reshape(-1, 2)
-                    max_cos = np.max([angle_cos(cnt[i], cnt[(i + 1) % 4], cnt[(i + 2) % 4]) for i in range(4)])
-                    if max_cos < 0.1 and cnt[0, 0] > 10 and cnt[0, 1] > 10:
-                        squares.append(cnt)
+
+                if len(cnt) >= 4 and len(cnt) <= 6 and cv.contourArea(cnt) > 1000 and cv.contourArea(cnt)  < 0.1 * (self.height * self.width) and cv.isContourConvex(cnt):
+                    rect = cv.minAreaRect(cnt)
+                    (x, y), (width, height), angle = rect
+                    aspect_ratio = min(width, height) / max(width, height)
+                    if aspect_ratio > 0.9:
+                        box = cv.boxPoints(rect)
+                        box = np.int0(box)
+                        squares.append(box)
 
         mass_centers = []
         for square in squares:
@@ -59,7 +70,7 @@ class Picture:
         for i in range(len(mass_centers)):
             add = True
             for j in range(i - 1, -1, -1):
-                if distance(mass_centers[i], mass_centers[j]) < 20:
+                if distance(mass_centers[i], mass_centers[j]) < 100:
                     add = False
             if add:
                 indexes.append(i)
@@ -73,13 +84,13 @@ class Picture:
 
         params.filterByArea = True
         params.minArea = 50
-        params.maxArea = 20000
+        params.maxArea = 35000
 
         params.filterByCircularity = True
         params.minCircularity = 0.5
 
         params.filterByInertia = True
-        params.minInertiaRatio = 0.75
+        params.minInertiaRatio = 0.6
 
         detector = cv.SimpleBlobDetector_create(params)
         keypoints = detector.detect(crop_img)
