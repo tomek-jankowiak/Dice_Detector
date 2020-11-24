@@ -46,13 +46,13 @@ class Picture:
         for thresh in range(0, 256, 26):
             _retr, binary = cv.threshold(blur, thresh, 255, cv.THRESH_BINARY)
             contours, _hierarchy = cv.findContours(binary, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-            tmp = self.img.copy()
 
             for cnt in contours:
                 cnt_len = cv.arcLength(cnt, True)
                 cnt = cv.approxPolyDP(cnt, 0.02 * cnt_len, True)
 
-                if len(cnt) >= 4 and len(cnt) <= 6 and cv.contourArea(cnt) > 1000 and cv.contourArea(cnt)  < 0.1 * (self.height * self.width) and cv.isContourConvex(cnt):
+                if 4 <= len(cnt) <= 6 and 0.01 * (self.height * self.width) < cv.contourArea(cnt) < 0.1 * \
+                        (self.height * self.width) and cv.isContourConvex(cnt):
                     rect = cv.minAreaRect(cnt)
                     (x, y), (width, height), angle = rect
                     aspect_ratio = min(width, height) / max(width, height)
@@ -82,15 +82,21 @@ class Picture:
 
         params = cv.SimpleBlobDetector_Params()
 
+        params.minThreshold = 0
+        params.maxThreshold = 255
+
         params.filterByArea = True
-        params.minArea = 50
+        params.minArea = 150
         params.maxArea = 35000
 
         params.filterByCircularity = True
-        params.minCircularity = 0.5
+        params.minCircularity = 0.4
 
         params.filterByInertia = True
         params.minInertiaRatio = 0.6
+
+        params.filterByConvexity = True
+        params.minConvexity = 0.3
 
         detector = cv.SimpleBlobDetector_create(params)
         keypoints = detector.detect(crop_img)
