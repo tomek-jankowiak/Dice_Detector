@@ -1,4 +1,4 @@
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, rc
 import cv2 as cv
 import numpy as np
 
@@ -25,16 +25,19 @@ class Picture:
         self.kernel = np.ones((3, 3), np.uint8)
 
     def process_picture(self):
-        faces = self.find_faces()
-        for face in faces:
-            min_x, min_y = np.min(face[:, 0]), np.min(face[:, 1])
-            max_x, max_y = np.max(face[:, 0]), np.max(face[:, 1])
+        squares = self.find_faces()
+        faces = []
+        for square in squares:
+            min_x, min_y = np.min(square[:, 0]), np.min(square[:, 1])
+            max_x, max_y = np.max(square[:, 0]), np.max(square[:, 1])
             crop_img = self.img_gray[min_y:max_y, min_x:max_x]
             pips = self.find_pips(crop_img)
-            textcoord = (int((max_x+min_x)/2), int(min_y - 10))
-            cv.putText(self.img, str(len(pips)), textcoord, cv.FONT_HERSHEY_COMPLEX, 5, (255,0,0), 5)
+            if len(pips) > 0:
+                faces.append(square)
+                textcoord = (int((max_x+min_x)/2), int(min_y - 10))
+                cv.putText(self.img, str(len(pips)), textcoord, cv.FONT_HERSHEY_COMPLEX, 10, (255, 0, 0), 7)
 
-        cv.drawContours(self.img, faces, -1, (0, 0, 255), 5)
+        cv.drawContours(self.img, faces, -1, (0, 0, 255), 10)
         plt.figure(figsize=(6, 6))
         plt.imshow(self.img)
         plt.show()
@@ -42,8 +45,7 @@ class Picture:
     def find_faces(self):
         squares = []
         blur = cv.medianBlur(self.img_gray, 5)
-
-        for thresh in range(0, 256, 26):
+        for thresh in range(255, 0, -15):
             _retr, binary = cv.threshold(blur, thresh, 255, cv.THRESH_BINARY)
             contours, _hierarchy = cv.findContours(binary, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
 
@@ -51,12 +53,12 @@ class Picture:
                 cnt_len = cv.arcLength(cnt, True)
                 cnt = cv.approxPolyDP(cnt, 0.02 * cnt_len, True)
 
-                if 4 <= len(cnt) <= 6 and 0.01 * (self.height * self.width) < cv.contourArea(cnt) < 0.1 * \
+                if 4 <= len(cnt) <= 6 and 0.005 * (self.height * self.width) < cv.contourArea(cnt) < 0.1 * \
                         (self.height * self.width) and cv.isContourConvex(cnt):
                     rect = cv.minAreaRect(cnt)
                     (x, y), (width, height), angle = rect
                     aspect_ratio = min(width, height) / max(width, height)
-                    if aspect_ratio > 0.9:
+                    if aspect_ratio > 0.88:
                         box = cv.boxPoints(rect)
                         box = np.int0(box)
                         squares.append(box)
@@ -101,12 +103,10 @@ class Picture:
         detector = cv.SimpleBlobDetector_create(params)
         keypoints = detector.detect(crop_img)
 
-        im_with_keypoints = cv.drawKeypoints(crop_img, keypoints, np.array([]), (0, 0, 255), cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        '''im_with_keypoints = cv.drawKeypoints(crop_img, keypoints, np.array([]), (0, 0, 255), cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
 
         plt.figure(figsize=(6, 6))
         plt.imshow(im_with_keypoints)
-        plt.show()
+        plt.show()'''
 
         return keypoints
-
-
